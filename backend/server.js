@@ -13,7 +13,7 @@ const app = express();
 
 // Middleware
 app.use(cors({
-    origin: 'http://next-circuit.vercel.app',
+    origin: 'https://your-circuit.vercel.app/',
     credentials: true
 }));
 app.use(morgan('dev'));
