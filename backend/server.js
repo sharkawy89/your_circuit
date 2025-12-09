@@ -5,6 +5,9 @@ const path = require('path');
 const morgan = require('morgan');
 const compression = require('compression');
 const db = require('./lib/db'); // MongoDB client module
+const mountRoutes = require('./routes');
+const ApiError = require('./utils/apiError');
+const globalError = require('./middleware/errorMiddleware');
 
 // Load environment variables
 dotenv.config();
@@ -12,18 +15,11 @@ dotenv.config();
 const app = express();
 
 // Middleware
-app.use(cors({
-    origin: 'https://your-circuit.vercel.app/',
-    credentials: true
-}));
 app.use(morgan('dev'));
-app.use(express.json());
 app.use(compression());
 
-const allowedOrigins = [
-    process.env.FRONTEND_URL || 'http://localhost:5000'
-];
-
+// Configure CORS
+const allowedOrigins = [process.env.FRONTEND_URL || 'http://localhost:5000'];
 const corsOptions = {
     origin: (origin, callback) => {
         if (!origin || allowedOrigins.includes(origin)) {
@@ -36,12 +32,14 @@ const corsOptions = {
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true
 };
-
 app.use(cors(corsOptions));
 
 // Serve static frontend files from public directory
 const frontendPath = path.join(__dirname, '..', 'public');
 app.use(express.static(frontendPath));
+
+// Serve uploads (for product images, etc.)
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Connect to MongoDB using native MongoClient
 console.log('📡 Initializing MongoDB connection...');
@@ -54,83 +52,23 @@ db.connectWithRetry()
         process.exit(1);
     });
 
-    // --- Mock API route handlers (temporary - replace with real DB logic later) ---
-    // These handlers explicitly use `/api/...` paths to match frontend and serverless setup
-    // POST /api/auth/register
-    app.post('/api/auth/register', (req, res) => {
-        const { name, email, password } = req.body || {};
+// Stripe/webhook-style endpoints require the raw body parser BEFORE express.json
+app.post('/webhook-checkout', express.raw({ type: 'application/json' }), (req, res) => {
+    // Placeholder webhook handler. If you integrate Stripe, replace this with actual logic.
+    console.log('Webhook received', { length: req.body && req.body.length });
+    res.status(200).send('ok');
+});
 
-        if (!name || !email || !password) {
-            return res.status(400).json({ success: false, error: 'Name, email and password are required' });
-        }
+// Parse JSON bodies after webhook route
+app.use(express.json());
 
-        // Mock duplicate check
-        if (email === 'taken@example.com') {
-            return res.status(400).json({ success: false, error: 'Email is already registered' });
-        }
+// API Routes (mount from central routes/index.js)
+mountRoutes(app);
 
-        // Return mock user and token
-        const user = { id: 'mock_user_id', name, email };
-        const token = 'mock_jwt_token';
-
-        return res.status(201).json({ success: true, message: 'User registered (mock)', token, user });
-    });
-
-    // POST /api/auth/login
-    app.post('/api/auth/login', (req, res) => {
-        const { email, password } = req.body || {};
-
-        if (!email || !password) {
-            return res.status(400).json({ success: false, error: 'Email and password are required' });
-        }
-
-        // Mock credential check
-        if (email !== 'user@example.com' || password !== 'password123') {
-            return res.status(401).json({ success: false, error: 'Invalid credentials (mock)' });
-        }
-
-        const user = { id: 'mock_user_id', name: 'Mock User', email };
-        const token = 'mock_jwt_token';
-
-        return res.status(200).json({ success: true, message: 'Login successful (mock)', token, user });
-    });
-
-    // GET /api/products (mocked list)
-    app.get('/api/products', (req, res) => {
-        const products = [
-            {
-                id: 'p1',
-                name: 'Mock Smartphone',
-                brand: 'MockBrand',
-                description: 'A sample mock smartphone.',
-                price: 499.99,
-                category: 'smartphones',
-                image: '/images/mock-phone.jpg',
-                stock: 12,
-                rating: 4.5
-            },
-            {
-                id: 'p2',
-                name: 'Mock Laptop',
-                brand: 'MockBrand',
-                description: 'A sample mock laptop.',
-                price: 1199.99,
-                category: 'laptops',
-                image: '/images/mock-laptop.jpg',
-                stock: 5,
-                rating: 4.7
-            }
-        ];
-
-        return res.status(200).json(products);
-    });
-
-// API Routes
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/products', require('./routes/products'));
-app.use('/api/cart', require('./routes/cart'));
-app.use('/api/orders', require('./routes/orders'));
-app.use('/api/users', require('./routes/users'));
+// Handle unknown API routes
+app.all('/api/*', (req, res, next) => {
+    next(new ApiError(`Can't find this route: ${req.originalUrl}`, 404));
+});
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -154,11 +92,13 @@ app.get('/checkout', (req, res) => {
     res.sendFile(path.join(frontendPath, 'checkout.html'));
 });
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(500).json({ error: err.message || 'Internal server error' });
+// SPA fallback: serve index.html for non-API unknown routes
+app.get('*', (req, res) => {
+    res.sendFile(path.join(frontendPath, 'index.html'));
 });
+
+// Global error handling middleware
+app.use(globalError);
 
 const PORT = process.env.PORT || 5000;
 const HOST = process.env.HOST || 'localhost';
@@ -168,9 +108,18 @@ app.get('*', (req, res) => {
     res.sendFile(path.join(frontendPath, 'index.html'));
 });
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
     console.log(`🚀 Server is running on http://${HOST}:${PORT}`);
     console.log(`📡 API available at http://${HOST}:${PORT}/api`);
+});
+
+// Handle rejection outside express
+process.on('unhandledRejection', (err) => {
+    console.error(`UnhandledRejection Errors: ${err?.name} | ${err?.message}`);
+    server.close(() => {
+        console.error('Shutting down due to unhandled rejection');
+        process.exit(1);
+    });
 });
 
 module.exports = app;
