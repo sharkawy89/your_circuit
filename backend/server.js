@@ -32,7 +32,11 @@ const corsOptions = {
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true
 };
-app.use(cors(corsOptions));
+app.use(cors({
+    origin: 'https://your-circuit.vercel.app', // <-- Replace with your actual Vercel domain
+    methods: ['GET', 'POST'], 
+    credentials: true
+}));
 
 // Serve static frontend files from public directory
 const frontendPath = path.join(__dirname, '..', 'public');
