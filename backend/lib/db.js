@@ -2,11 +2,11 @@ const { MongoClient, ServerApiVersion } = require('mongodb');
 const mongoose = require('mongoose');
 const path = require('path');
 
-
 // Load .env if present (useful locally)
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
-const uri =  "mongodb+srv://adhamsharkawy185_db_user:BrfdIGj0DEDmCCrq@next-circuit.ncjq9gj.mongodb.net/?appName=Next-circuit";
+// Use environment-provided URI (never hardcode secrets)
+const uri = process.env.MONGODB_URI;
 
 if (!uri) {
   console.error('❌ MONGODB_URI is not set. Please configure it in environment variables.');
@@ -15,6 +15,7 @@ if (!uri) {
 
 // Create a MongoClient with Stable API version
 const client = new MongoClient(uri, {
+  serverSelectionTimeoutMS: 5000,
   serverApi: {
     version: ServerApiVersion.v1,
     strict: true,
@@ -28,7 +29,7 @@ let isConnected = false;
  * Connect to MongoDB with retry logic and also initialize mongoose (for models)
  * @param {number} retries - Number of retry attempts (default: 5)
  */
-const connectWithRetry = async (retries = 5) => {
+const connectWithRetry = async (retries = 3) => {
   if (!uri) {
     throw new Error('MONGODB_URI is not configured');
   }
@@ -63,7 +64,7 @@ const connectWithRetry = async (retries = 5) => {
       }
 
       // Wait before retry
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      await new Promise(resolve => setTimeout(resolve, 2000));
     }
   }
 };
