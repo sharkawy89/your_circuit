@@ -4,6 +4,8 @@ const dotenv = require('dotenv');
 const path = require('path');
 const morgan = require('morgan');
 const compression = require('compression');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const db = require('./lib/db'); // MongoDB client module
 const mountRoutes = require('./routes');
 const ApiError = require('./utils/apiError');
@@ -17,24 +19,29 @@ const app = express();
 // Middleware
 app.use(morgan('dev'));
 app.use(compression());
+app.use(helmet());
 
-// Configure CORS
-const allowedOrigins = [process.env.FRONTEND_URL || 'http://localhost:5000'];
-const corsOptions = {
+// Rate limit auth endpoints to mitigate brute force
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 100,
+    standardHeaders: true,
+    legacyHeaders: false
+});
+app.use('/api/auth', authLimiter);
+
+// Configure CORS (single source of truth)
+const allowedOrigins = [
+    'https://your-circuit.vercel.app',
+    process.env.FRONTEND_URL || 'http://localhost:5000'
+];
+app.use(cors({
     origin: (origin, callback) => {
-        if (!origin || allowedOrigins.includes(origin)) {
-            callback(null, true);
-        } else {
-            callback(new Error('Not allowed by CORS'));
-        }
+        if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+        return callback(new Error('Not allowed by CORS'));
     },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: true
-};
-app.use(cors({
-    origin: 'https://your-circuit.vercel.app', // <-- Replace with your actual Vercel domain
-    methods: ['GET', 'POST'], 
     credentials: true
 }));
 

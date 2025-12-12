@@ -125,7 +125,7 @@ Summary:
 
 ```bash
 # Navigate to project root
-cd D:\swe\ proj\ 03
+cd D:\study data\ proj5
 
 # Initialize Git (if not already done)
 git init
