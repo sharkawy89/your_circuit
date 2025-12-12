@@ -1,6 +1,7 @@
 {
   "name": "next-circuit-backend",
   "version": "1.0.0",
+  "type": "commonjs",
   "description": "Backend API for Next-circuit E-Commerce Store",
   "main": "server.js",
   "scripts": {

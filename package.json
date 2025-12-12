@@ -2,6 +2,7 @@
   "name": "next-circuit",
   "private": true,
   "version": "1.0.0",
+  "type": "commonjs",
   "scripts": {
     "dev": "echo \"Use backend/package.json scripts for backend and frontend build separately\""
   },
