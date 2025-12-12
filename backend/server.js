@@ -19,7 +19,27 @@ const app = express();
 // Middleware
 app.use(morgan('dev'));
 app.use(compression());
-app.use(helmet());
+
+// Helmet with relaxed CSP to allow our CDN scripts/styles and inline handlers
+app.use(helmet({
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'", "'unsafe-inline'", 'https://cdn.tailwindcss.com', 'https://unpkg.com'],
+            scriptSrcAttr: ["'self'", "'unsafe-inline'"],
+            styleSrc: ["'self'", "'unsafe-inline'", 'https://cdn.tailwindcss.com'],
+            imgSrc: ["'self'", 'data:', 'https://images.unsplash.com', 'https://placehold.co'],
+            connectSrc: ["'self'"],
+            fontSrc: ["'self'", 'https://cdn.tailwindcss.com'],
+            objectSrc: ["'none'"],
+            frameAncestors: ["'self'"],
+            baseUri: ["'self'"],
+            formAction: ["'self'"]
+        }
+    },
+    crossOriginEmbedderPolicy: false,
+    crossOriginResourcePolicy: { policy: 'cross-origin' }
+}));
 
 // Rate limit auth endpoints to mitigate brute force
 const authLimiter = rateLimit({
