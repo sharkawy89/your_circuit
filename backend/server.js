@@ -6,7 +6,6 @@ const morgan = require('morgan');
 const compression = require('compression');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
-const db = require('./lib/db'); // MongoDB client module
 const mountRoutes = require('./routes');
 const ApiError = require('./utils/apiError');
 const globalError = require('./middleware/errorMiddleware');
@@ -84,22 +83,6 @@ app.use(express.static(frontendPath));
 // Serve uploads (for product images, etc.)
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Connect to MongoDB using native MongoClient
-console.log('📡 Initializing MongoDB connection...');
-// In serverless (Vercel), defer connection to per-request to avoid cold-start failures
-if (process.env.VERCEL) {
-    console.log('⚠️ Vercel detected: deferring MongoDB connection to request time');
-} else {
-    db.connectWithRetry()
-        .then(() => {
-            console.log('✅ MongoDB initialized successfully');
-        })
-        .catch(err => {
-            console.error('❌ MongoDB initialization error:', err?.message || err);
-            process.exit(1);
-        });
-}
-
 // Stripe/webhook-style endpoints require the raw body parser BEFORE express.json
 app.post('/webhook-checkout', express.raw({ type: 'application/json' }), (req, res) => {
     // Placeholder webhook handler. If you integrate Stripe, replace this with actual logic.
@@ -118,16 +101,9 @@ app.all('/api/*', (req, res, next) => {
     next(new ApiError(`Can't find this route: ${req.originalUrl}`, 404));
 });
 
-// Health check
-app.get('/api/health', async (req, res) => {
-    try {
-        if (!db.isConnected()) {
-            await db.connectWithRetry(1);
-        }
-        res.status(200).json({ message: '✅ Backend is running', timestamp: new Date() });
-    } catch (err) {
-        res.status(503).json({ message: 'Database not reachable', error: err?.message || err });
-    }
+// Health check (no DB since migrating to Firebase)
+app.get('/api/health', (req, res) => {
+    res.status(200).json({ message: '✅ Backend is running (Mongo removed, migrate to Firebase)', timestamp: new Date() });
 });
 
 // Serve frontend pages

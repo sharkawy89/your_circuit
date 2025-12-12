@@ -1,48 +1,49 @@
-const User = require('../models/User');
+const { getDb } = require('../lib/firebase');
 
-// Get user profile
+const USERS = 'users';
+
 exports.getUserProfile = async (req, res) => {
-    try {
-        const user = await User.findById(req.userId).select('-password');
-        if (!user) {
-            return res.status(404).json({ error: 'User not found' });
-        }
-        res.status(200).json(user);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
+	try {
+		const db = getDb();
+		const doc = await db.collection(USERS).doc(req.userId).get();
+		if (!doc.exists) {
+			return res.status(404).json({ error: 'User not found' });
+		}
+		const user = doc.data();
+		return res.status(200).json({ id: doc.id, name: user.name, email: user.email, phone: user.phone, address: user.address });
+	} catch (error) {
+		return res.status(500).json({ error: error.message });
+	}
 };
 
-// Update user profile
 exports.updateUserProfile = async (req, res) => {
-    try {
-        const { name, phone, address } = req.body;
-        
-        const user = await User.findByIdAndUpdate(
-            req.userId,
-            { name, phone, address, updatedAt: Date.now() },
-            { new: true }
-        ).select('-password');
-        
-        if (!user) {
-            return res.status(404).json({ error: 'User not found' });
-        }
-        
-        res.status(200).json({
-            message: 'Profile updated successfully',
-            user
-        });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
+	try {
+		const { name, phone, address } = req.body;
+		const db = getDb();
+		const ref = db.collection(USERS).doc(req.userId);
+		const doc = await ref.get();
+		if (!doc.exists) {
+			return res.status(404).json({ error: 'User not found' });
+		}
+		await ref.update({ name, phone, address, updatedAt: new Date().toISOString() });
+		const updated = await ref.get();
+		const user = updated.data();
+		return res.status(200).json({ message: 'Profile updated successfully', user: { id: ref.id, name: user.name, email: user.email, phone: user.phone, address: user.address } });
+	} catch (error) {
+		return res.status(500).json({ error: error.message });
+	}
 };
 
-// Get all users (Admin only)
 exports.getAllUsers = async (req, res) => {
-    try {
-        const users = await User.find().select('-password');
-        res.status(200).json(users);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
+	try {
+		const db = getDb();
+		const snap = await db.collection(USERS).get();
+		const users = snap.docs.map(d => {
+			const u = d.data();
+			return { id: d.id, name: u.name, email: u.email, phone: u.phone, address: u.address };
+		});
+		return res.status(200).json(users);
+	} catch (error) {
+		return res.status(500).json({ error: error.message });
+	}
 };

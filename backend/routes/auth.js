@@ -15,8 +15,8 @@ router.get('/profile', authMiddleware, authController.getProfile);
 
 // Debug helper (returns whether JWT_SECRET is configured). Remove in production once verified.
 router.get('/debug-secret', (req, res) => {
-	const hasSecret = !!process.env.JWT_SECRET;
-	res.status(200).json({ hasJwtSecret: hasSecret });
+    const hasSecret = !!process.env.JWT_SECRET;
+    res.status(200).json({ hasJwtSecret: hasSecret });
 });
 
 module.exports = router;
