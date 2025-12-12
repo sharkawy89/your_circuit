@@ -40,11 +40,14 @@ const allowedOrigins = [
     'http://localhost:5000'
 ].filter(Boolean);
 
+// Allow any *.vercel.app subdomain (preview deployments)
+const vercelPattern = /^https?:\/\/[a-zA-Z0-9-]+\.vercel\.app$/;
+
 app.use(cors({
     origin: (origin, callback) => {
         // Allow same-origin/no origin (e.g., mobile apps, curl)
         if (!origin) return callback(null, true);
-        if (allowedOrigins.some(o => origin === o || origin.startsWith(`${o}/`))) {
+        if (allowedOrigins.some(o => origin === o || origin.startsWith(`${o}/`)) || vercelPattern.test(origin)) {
             return callback(null, true);
         }
         return callback(new Error('Not allowed by CORS'));
