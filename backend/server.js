@@ -146,11 +146,6 @@ app.use(globalError);
 const PORT = process.env.PORT || 5000;
 const HOST = process.env.HOST || 'localhost';
 
-// SPA fallback: serve index.html for unknown routes
-app.get('*', (req, res) => {
-    res.sendFile(path.join(frontendPath, 'index.html'));
-});
-
 // In serverless environments (Vercel), exporting the app is enough; avoid calling listen.
 let server;
 const isServerless = !!(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
