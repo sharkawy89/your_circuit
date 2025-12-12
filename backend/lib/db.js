@@ -6,7 +6,7 @@ const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
 // Use environment-provided URI (never hardcode secrets)
-const uri = process.env.MONGODB_URI;
+const uri = "mongodb+srv://adhamsharkawy185_db_user:BrfdIGj0DEDmCCrq@next-circuit.ncjq9gj.mongodb.net/?appName=Next-circuit";
 
 if (!uri) {
   console.error('❌ MONGODB_URI is not set. Please configure it in environment variables.');
