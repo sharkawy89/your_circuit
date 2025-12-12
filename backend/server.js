@@ -86,18 +86,19 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Connect to MongoDB using native MongoClient
 console.log('📡 Initializing MongoDB connection...');
-db.connectWithRetry()
-    .then(() => {
-        console.log('✅ MongoDB initialized successfully');
-    })
-    .catch(err => {
-        console.error('❌ MongoDB initialization error:', err?.message || err);
-        // In serverless, fail fast rather than hang
-        if (process.env.VERCEL) {
-            throw err;
-        }
-        process.exit(1);
-    });
+// In serverless (Vercel), defer connection to per-request to avoid cold-start failures
+if (process.env.VERCEL) {
+    console.log('⚠️ Vercel detected: deferring MongoDB connection to request time');
+} else {
+    db.connectWithRetry()
+        .then(() => {
+            console.log('✅ MongoDB initialized successfully');
+        })
+        .catch(err => {
+            console.error('❌ MongoDB initialization error:', err?.message || err);
+            process.exit(1);
+        });
+}
 
 // Stripe/webhook-style endpoints require the raw body parser BEFORE express.json
 app.post('/webhook-checkout', express.raw({ type: 'application/json' }), (req, res) => {
