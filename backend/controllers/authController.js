@@ -51,6 +51,12 @@ exports.login = async (req, res) => {
     try {
         const { email, password } = req.body;
 
+        // Ensure DB is connected before proceeding (helps in serverless cold starts)
+        const db = require('../lib/db');
+        if (!db.isConnected()) {
+            await db.connectWithRetry(1);
+        }
+
         const user = await User.findOne({ email });
         if (!user) {
             return res.status(400).json({ success: false, error: 'Invalid credentials' });

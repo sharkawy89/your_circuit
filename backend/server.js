@@ -92,6 +92,10 @@ db.connectWithRetry()
     })
     .catch(err => {
         console.error('❌ MongoDB initialization error:', err?.message || err);
+        // In serverless, fail fast rather than hang
+        if (process.env.VERCEL) {
+            throw err;
+        }
         process.exit(1);
     });
 
@@ -114,8 +118,15 @@ app.all('/api/*', (req, res, next) => {
 });
 
 // Health check
-app.get('/api/health', (req, res) => {
-    res.status(200).json({ message: '✅ Backend is running', timestamp: new Date() });
+app.get('/api/health', async (req, res) => {
+    try {
+        if (!db.isConnected()) {
+            await db.connectWithRetry(1);
+        }
+        res.status(200).json({ message: '✅ Backend is running', timestamp: new Date() });
+    } catch (err) {
+        res.status(503).json({ message: 'Database not reachable', error: err?.message || err });
+    }
 });
 
 // Serve frontend pages

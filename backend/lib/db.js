@@ -15,6 +15,7 @@ if (!uri) {
 
 // Create a MongoClient with Stable API version
 const client = new MongoClient(uri, {
+  // Keep selection timeout short to avoid serverless cold-start timeouts
   serverSelectionTimeoutMS: 5000,
   serverApi: {
     version: ServerApiVersion.v1,
@@ -29,7 +30,7 @@ let isConnected = false;
  * Connect to MongoDB with retry logic and also initialize mongoose (for models)
  * @param {number} retries - Number of retry attempts (default: 5)
  */
-const connectWithRetry = async (retries = 3) => {
+const connectWithRetry = async (retries = process.env.VERCEL ? 1 : 3) => {
   if (!uri) {
     throw new Error('MONGODB_URI is not configured');
   }
@@ -63,8 +64,8 @@ const connectWithRetry = async (retries = 3) => {
         throw err;
       }
 
-      // Wait before retry
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Wait before retry (short pause to avoid long cold starts)
+      await new Promise(resolve => setTimeout(resolve, 500));
     }
   }
 };
