@@ -119,18 +119,24 @@ app.get('*', (req, res) => {
     res.sendFile(path.join(frontendPath, 'index.html'));
 });
 
-const server = app.listen(PORT, () => {
-    console.log(`🚀 Server is running on http://${HOST}:${PORT}`);
-    console.log(`📡 API available at http://${HOST}:${PORT}/api`);
-});
+// In serverless environments (Vercel), exporting the app is enough; avoid calling listen.
+let server;
+const isServerless = !!(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
 
-// Handle rejection outside express
-process.on('unhandledRejection', (err) => {
-    console.error(`UnhandledRejection Errors: ${err?.name} | ${err?.message}`);
-    server.close(() => {
-        console.error('Shutting down due to unhandled rejection');
-        process.exit(1);
+if (!isServerless) {
+    server = app.listen(PORT, () => {
+        console.log(`🚀 Server is running on http://${HOST}:${PORT}`);
+        console.log(`📡 API available at http://${HOST}:${PORT}/api`);
     });
-});
+
+    // Handle rejection outside express
+    process.on('unhandledRejection', (err) => {
+        console.error(`UnhandledRejection Errors: ${err?.name} | ${err?.message}`);
+        server.close(() => {
+            console.error('Shutting down due to unhandled rejection');
+            process.exit(1);
+        });
+    });
+}
 
 module.exports = app;
