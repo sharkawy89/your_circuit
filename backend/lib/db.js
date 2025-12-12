@@ -15,8 +15,10 @@ if (!uri) {
 
 // Create a MongoClient with Stable API version
 const client = new MongoClient(uri, {
-  // Keep selection timeout short to avoid serverless cold-start timeouts
+  // Keep timeouts short to avoid serverless cold-start hangs
   serverSelectionTimeoutMS: 5000,
+  connectTimeoutMS: 5000,
+  socketTimeoutMS: 5000,
   serverApi: {
     version: ServerApiVersion.v1,
     strict: true,
@@ -38,16 +40,27 @@ const connectWithRetry = async (retries = process.env.VERCEL ? 1 : 3) => {
   for (let i = 0; i < retries; i++) {
     try {
       console.log(`📡 Connecting to MongoDB (attempt ${i + 1}/${retries})...`);
-      // connect native driver
-      await client.connect();
+      // connect native driver with a hard cap per attempt
+      await Promise.race([
+        client.connect(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Mongo connect timeout')), 6000))
+      ]);
       // verify connection
-      await client.db('admin').command({ ping: 1 });
+      await Promise.race([
+        client.db('admin').command({ ping: 1 }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Mongo ping timeout')), 4000))
+      ]);
 
       // also connect mongoose (models expect mongoose)
-      await mongoose.connect(uri, {
-        dbName: process.env.MONGODB_DB || undefined,
-        serverSelectionTimeoutMS: 5000,
-      });
+      await Promise.race([
+        mongoose.connect(uri, {
+          dbName: process.env.MONGODB_DB || undefined,
+          serverSelectionTimeoutMS: 5000,
+          connectTimeoutMS: 5000,
+          socketTimeoutMS: 5000,
+        }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Mongoose connect timeout')), 7000))
+      ]);
 
       console.log('✅ MongoDB connected successfully (native driver + mongoose)');
       isConnected = true;
