@@ -33,11 +33,20 @@ app.use('/api/auth', authLimiter);
 // Configure CORS (single source of truth)
 const allowedOrigins = [
     'https://your-circuit.vercel.app',
-    process.env.FRONTEND_URL || 'http://localhost:5000'
-];
+    'http://your-circuit.vercel.app',
+    process.env.FRONTEND_URL || 'http://localhost:5000',
+    process.env.FRONTEND_URL_PREVIEW, // optional for Vercel preview URLs
+    'http://localhost:3000',
+    'http://localhost:5000'
+].filter(Boolean);
+
 app.use(cors({
     origin: (origin, callback) => {
-        if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+        // Allow same-origin/no origin (e.g., mobile apps, curl)
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.some(o => origin === o || origin.startsWith(`${o}/`))) {
+            return callback(null, true);
+        }
         return callback(new Error('Not allowed by CORS'));
     },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
