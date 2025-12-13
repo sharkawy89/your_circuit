@@ -1,6 +1,6 @@
 # Next-Circuit E-Commerce Platform
 
-A full-stack e-commerce application with user authentication, product catalog, shopping cart, and order management. Built with **Node.js**, **Express**, **MongoDB Atlas**, and **Vanilla JavaScript**.
+Full-stack e-commerce application with user authentication, product catalog, shopping cart, and order management. Backend runs on Vercel serverless with **Node.js** + **Express**, data is in **Firebase Firestore**, frontend is **Vanilla HTML/CSS/JS**.
 
 ## 🚀 Features
 
@@ -11,7 +11,7 @@ A full-stack e-commerce application with user authentication, product catalog, s
 - ✅ User Profile Management
 - ✅ Password Hashing & Security
 - ✅ Input Validation (Joi)
-- ✅ MongoDB Atlas Cloud Database
+- ✅ Firebase Firestore Database
 - ✅ RESTful API
 - ✅ Responsive Frontend
 
@@ -19,12 +19,11 @@ A full-stack e-commerce application with user authentication, product catalog, s
 
 ### Backend
 - **Node.js** + **Express.js**
-- **MongoDB Atlas** (Cloud Database)
-- **Mongoose** (ODM)
+- **Firebase Admin SDK** (Firestore access)
 - **JWT** (Authentication)
 - **bcryptjs** (Password Hashing)
 - **Joi** (Input Validation)
-- **CORS** & **Morgan** (Middleware)
+- **Helmet**, **CORS**, **Morgan**, **Compression** (Middleware)
 
 ### Frontend
 - **HTML5** + **CSS3** (Tailwind)
@@ -34,8 +33,8 @@ A full-stack e-commerce application with user authentication, product catalog, s
 
 ## 📋 Prerequisites
 
-- **Node.js** v14+ ([Download](https://nodejs.org/))
-- **MongoDB Atlas** Account ([Sign Up Free](https://www.mongodb.com/cloud/atlas))
+- **Node.js** v18+ locally / Vercel Node 22.x runtime ([Download](https://nodejs.org/))
+- **Firebase** project with Firestore enabled ([Console](https://console.firebase.google.com/))
 - **Git** ([Download](https://git-scm.com/))
 
 ## ⚡ Quick Start
@@ -56,17 +55,12 @@ npm install
 Create a `.env` file in the `backend` folder:
 ```env
 PORT=5000
-MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/next-circuit?retryWrites=true&w=majority
 JWT_SECRET=your_super_secret_jwt_key_here
-NODE_ENV=production
+FIREBASE_SERVICE_ACCOUNT={"type":"service_account","project_id":"next-circuit-df46d",...}
 ```
 
-**Get your MongoDB Atlas URI:**
-1. Go to [MongoDB Atlas](https://cloud.mongodb.com/)
-2. Create a cluster (free tier available)
-3. Create a database user
-4. Click **Connect** → **Drivers** → **Node.js**
-5. Copy the connection string and replace `<password>` with your database user password
+Notes:
+- `FIREBASE_SERVICE_ACCOUNT` must be the raw JSON string (single-line) of a Firebase service account with Firestore access. See Firebase Console → Project Settings → Service Accounts → Generate new private key.
 
 ### 4. Start the Server
 ```bash
@@ -74,11 +68,11 @@ npm run dev
 ```
 Server runs on **http://localhost:${PORT:-5000}** (replace PORT in `.env` if you changed it)
 
-### 5. Seed Sample Data (Optional)
+### 5. Optional Checks
+- Verify Firestore connectivity:
 ```bash
-npm run seed
+node backend/scripts/checkFirebase.js
 ```
-Populates 8 sample products into your database
 
 ### 6. Access the Application
 - **Frontend**: http://localhost:${PORT:-5000} (or `${location.origin}` when accessed via browser)
@@ -99,19 +93,27 @@ Populates 8 sample products into your database
 |--------|----------|-------------|
 | GET | `/api/products` | Get all products |
 | GET | `/api/products/:id` | Get product by ID |
+| POST | `/api/products` | Create product |
+| PUT | `/api/products/:id` | Update product |
+| DELETE | `/api/products/:id` | Delete product |
 
-### Cart
+### Cart (auth required)
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/api/cart` | Add to cart |
+| POST | `/api/cart` | Add to cart (productId, quantity) |
 | GET | `/api/cart` | Get cart items |
-| DELETE | `/api/cart/:id` | Remove from cart |
+| PATCH | `/api/cart` | Update cart item (productId, quantity) |
+| DELETE | `/api/cart` | Remove from cart (productId) |
+| POST | `/api/cart/clear` | Clear cart |
 
 ### Orders
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | POST | `/api/orders` | Create order |
 | GET | `/api/orders` | Get user orders |
+| GET | `/api/orders/:id` | Get order by id |
+| PATCH | `/api/orders/:id` | Update status/paymentStatus |
+| POST | `/api/orders/:id/cancel` | Cancel pending order |
 
 ## Frontend integration examples
 
@@ -147,21 +149,9 @@ fetch(`${API_BASE || '/api'}/auth/login`, {
 });
 ```
 
-## 🧪 Testing
-
-Run the automated authentication tests:
-```bash
-cd backend
-node test-auth.js
-```
-
-Tests verify:
-- ✅ User registration
-- ✅ Database persistence
-- ✅ Login with correct credentials
-- ✅ Login rejection with wrong password
-- ✅ Duplicate email prevention
-- ✅ Password validation
+## 🧪 Health & Diagnostics
+- Backend health: `GET /api/health`
+- Firestore check: `node backend/scripts/checkFirebase.js`
 
 ## 📦 Project Structure
 
@@ -169,7 +159,7 @@ Tests verify:
 Next-circuit-/
 ├── backend/
 │   ├── controllers/        # API logic
-│   ├── models/            # MongoDB schemas
+│   ├── lib/               # Firebase admin init (`getDb()`)
 │   ├── routes/            # API endpoints
 │   ├── middleware/        # Auth, validation
 │   ├── validators/        # Joi validation schemas
@@ -177,7 +167,7 @@ Next-circuit-/
 │   ├── .env.example       # Template for .env
 │   ├── server.js          # Express app setup
 │   ├── package.json       # Dependencies
-│   └── seed.js            # Database seeding
+│   └── scripts/checkFirebase.js  # Firestore connectivity check
 ├── frontend files (HTML, CSS, JS)
 ├── .gitignore             # Git exclusions
 └── README.md              # This file
@@ -192,7 +182,23 @@ Next-circuit-/
 - ✅ Environment variables for secrets
 - ✅ `.env` file in `.gitignore` (not committed to Git)
 
-## 🚀 Deployment on Heroku
+## 🚀 Deployment on Vercel
+
+### Configure rewrites
+`vercel.json`:
+```json
+{
+	"rewrites": [
+		{ "source": "/api/:path*", "destination": "/api/index" }
+	]
+}
+```
+
+### Deploy
+1. Push code to GitHub
+2. Import the repo in Vercel
+3. Set environment variables (`FIREBASE_SERVICE_ACCOUNT`, `JWT_SECRET`, optional `FRONTEND_URL`)
+4. Deploy; test `https://<your-app>.vercel.app/api/health`
 
 ### 1. Install Heroku CLI
 Download from [heroku.com/cli](https://devcenter.heroku.com/articles/heroku-cli)
@@ -243,14 +249,11 @@ heroku logs --tail
 
 ## 🐛 Troubleshooting
 
-### MongoDB Atlas Connection Failed
-**Issue**: `Error: connect ECONNREFUSED` or `connection timed out`
-
-**Solutions**:
-- ✅ Check IP whitelist in Atlas → Network Access (add `0.0.0.0/0` for testing)
-- ✅ Verify database user credentials are correct
-- ✅ Ensure `MONGODB_URI` format: `mongodb+srv://user:pass@cluster.mongodb.net/dbname?retryWrites=true&w=majority`
-- ✅ Check cluster is running (may take 2-3 minutes to start)
+### Serverless function 500
+**Common causes**:
+- Importing browser Firebase SDK on the server (use Admin SDK only in `backend/lib/firebase.js`).
+- Wrapped app with `serverless-http` (not needed on Vercel). Export Express app directly from `api/index.js`.
+- Missing or malformed `FIREBASE_SERVICE_ACCOUNT` env var (must be raw JSON string, single-line).
 
 ### Port 5000 Already in Use
 ```bash
@@ -272,7 +275,7 @@ lsof -ti :5000 | xargs kill -9
 | Variable | Description | Example |
 |----------|-------------|---------|
 | `PORT` | Server port | `5000` |
-| `MONGODB_URI` | MongoDB Atlas connection string | `mongodb+srv://user:pass@cluster.mongodb.net/dbname?retryWrites=true&w=majority` |
+| `FIREBASE_SERVICE_ACCOUNT` | Firebase service account JSON (single-line) | `{ "type": "service_account", ... }` |
 | `JWT_SECRET` | Secret for JWT signing | `your_super_secret_key` |
 | `NODE_ENV` | Environment | `production` |
 
