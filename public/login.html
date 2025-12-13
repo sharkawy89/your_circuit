@@ -132,7 +132,9 @@
         // Initialize icons
         lucide.createIcons();
 
-        const API_URL = '/api';
+        // Prefer a runtime-injected API URL (e.g., set window.NEXT_PUBLIC_API_URL before this script),
+        // otherwise fall back to same-origin /api which works with Vercel rewrites.
+        const API_URL = window.NEXT_PUBLIC_API_URL || '/api';
 
         // Helper: show notification
         function showNotification(message, type = 'info') {

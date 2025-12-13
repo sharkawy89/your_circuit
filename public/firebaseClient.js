@@ -8,14 +8,12 @@ import { getFirestore } from 'https://www.gstatic.com/firebasejs/11.0.2/firebase
 // import { getAnalytics } from 'https://www.gstatic.com/firebasejs/11.0.2/firebase-analytics.js'; // optional
 
 const firebaseConfig = {
-  apiKey: 'AIzaSyBb0Qx1mxcOxe9VlpaAXe-wq3kdue6ke-M',
-  authDomain: 'next-circuit.firebaseapp.com',
-  databaseURL: 'https://next-circuit-default-rtdb.europe-west1.firebasedatabase.app',
-  projectId: 'next-circuit',
-  storageBucket: 'next-circuit.firebasestorage.app',
-  messagingSenderId: '876963628446',
-  appId: '1:876963628446:web:2a205f90addf65acef028f',
-  measurementId: 'G-P1ZCP7MSF1'
+  apiKey: 'AIzaSyA7SDH3TFwIYfebsuIMUnYgFnYsTHh84Og',
+  authDomain: 'next-circuit-df46d.firebaseapp.com',
+  projectId: 'next-circuit-df46d',
+  storageBucket: 'next-circuit-df46d.firebasestorage.app',
+  messagingSenderId: '1071777518628',
+  appId: '1:1071777518628:web:cd90e7ad581ccb2901f4b1'
 };
 
 const app = initializeApp(firebaseConfig);

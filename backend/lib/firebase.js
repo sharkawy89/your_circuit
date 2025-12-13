@@ -4,16 +4,15 @@ let app;
 
 function initFirebase() {
   if (app) return app;
-  const encoded = process.env.FIREBASE_SERVICE_ACCOUNT;
-  if (!encoded) {
+  const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
+  if (!raw) {
     throw new Error('FIREBASE_SERVICE_ACCOUNT is not set');
   }
   let creds;
   try {
-    const json = Buffer.from(encoded, 'base64').toString('utf8');
-    creds = JSON.parse(json);
+    creds = JSON.parse(raw);
   } catch (err) {
-    throw new Error('Failed to parse FIREBASE_SERVICE_ACCOUNT (base64-encoded JSON)');
+    throw new Error('Failed to parse FIREBASE_SERVICE_ACCOUNT (expected raw JSON string)');
   }
   app = admin.initializeApp({
     credential: admin.credential.cert(creds),

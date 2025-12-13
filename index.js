@@ -2,8 +2,8 @@
 // Next-circuit E-COMMERCE 
 // ==========================
 
-// API Configuration
-const API_URL = '/api';
+// API Configuration (runtime-configurable; default to same-origin /api with Vercel rewrites)
+const API_URL = (typeof window !== 'undefined' && window.NEXT_PUBLIC_API_URL) ? window.NEXT_PUBLIC_API_URL : '/api';
 let authToken = localStorage.getItem('authToken');
 let currentUser = localStorage.getItem('currentUser') ? JSON.parse(localStorage.getItem('currentUser')) : null;
 
