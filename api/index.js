@@ -1,4 +1,4 @@
-const serverless = require('serverless-http');
 const app = require('../backend/server');
 
-module.exports = serverless(app);
+// Vercel Node functions receive (req, res); Express app is already a handler
+module.exports = app;
